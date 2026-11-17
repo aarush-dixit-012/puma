@@ -6,6 +6,10 @@ const app = new Hono()
 const BOT_TOKEN = process.env.TELEGRAM_BOT_TOKEN
 const WEBHOOK_SECRET = process.env.TELEGRAM_WEBHOOK_SECRET
 
+app.get('/', (c) => {
+  return c.text('Hello Hono!')
+})
+
 app.get('/health', (c) => {
   return c.text('Hello Hono!')
 })
@@ -13,7 +17,7 @@ app.get('/health', (c) => {
 app.post('/webhook', async (c) => {
   // Verify the request came from Telegram
   const secret = c.req.header('x-telegram-bot-api-secret-token')
-  if (WEBHOOK_SECRET && secret !== WEBHOOK_SECRET) {
+  if (!WEBHOOK_SECRET || secret !== WEBHOOK_SECRET) {
     return c.text('Unauthorized', 401)
   }
 
@@ -28,6 +32,10 @@ app.post('/webhook', async (c) => {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ chat_id: chatId, text })
+    }).then((response) => {
+      if (!response.ok) {
+        console.error('sendMessage failed with HTTP status', response.status)
+      }
     }).catch((err) => console.error('sendMessage failed', err))
   }
 
