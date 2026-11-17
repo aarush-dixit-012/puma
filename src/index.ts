@@ -1,5 +1,6 @@
 import { serve } from '@hono/node-server'
 import { Hono } from 'hono'
+import { generateResponse } from '../utils/ai.js'
 
 const app = new Hono()
 
@@ -27,16 +28,21 @@ app.post('/webhook', async (c) => {
   const text = message?.text
 
   if (chatId && typeof text === 'string') {
-    // Echo the message back (fire-and-forget; respond to Telegram quickly)
-    fetch(`https://api.telegram.org/bot${BOT_TOKEN}/sendMessage`, {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ chat_id: chatId, text })
-    }).then((response) => {
-      if (!response.ok) {
-        console.error('sendMessage failed with HTTP status', response.status)
-      }
-    }).catch((err) => console.error('sendMessage failed', err))
+    // Generate an AI response and reply to the chat
+    generateResponse(text)
+      .then((reply) => {
+        return fetch(`https://api.telegram.org/bot${BOT_TOKEN}/sendMessage`, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ chat_id: chatId, text: reply })
+        })
+      })
+      .then((response) => {
+        if (response && !response.ok) {
+          console.error('sendMessage failed with HTTP status', response.status)
+        }
+      })
+      .catch((err) => console.error('generateResponse/sendMessage failed', err))
   }
 
   return c.text('ok')
